@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, User, ArrowRight, Clock, Tag } from 'lucide-react';
+import { Calendar, User, ArrowRight, Clock, Tag, PlusCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { calculateReadTime } from '../utils/readTime';
+import { useAuth } from '../contexts/AuthContext';
+import Spinner from '../components/Spinner';
 
 export interface BlogPost {
     id: number;
     title: string;
     excerpt: string | null;
+    content: string | null;
     author: { full_name: string };
     created_at: string;
-    readTime: string; // This will be static for now
+    readTime: string;
     category: string | null;
     image_url: string | null;
     tags: string[] | null;
@@ -22,15 +26,18 @@ const Blog: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const categories = ['All', 'Development', 'Design', 'Security', 'Business', 'Tutorial'];
   const [selectedCategory, setSelectedCategory] = React.useState('All');
+  const { profile } = useAuth();
 
   useEffect(() => {
     const fetchPosts = async () => {
+      setLoading(true);
       let query = supabase
         .from('posts')
         .select(`
           id,
           title,
           excerpt,
+          content,
           created_at,
           category,
           image_url,
@@ -48,11 +55,10 @@ const Blog: React.FC = () => {
       if (error) {
         setError(error.message);
       } else if (data) {
-        // Supabase returns author as an object, so we need to flatten it
         const formattedData = data.map((post: any) => ({
           ...post,
-          readTime: '5 min read', // Placeholder
-          author: post.author || { full_name: 'Anonymous' }
+          readTime: calculateReadTime(post.content),
+          author: { full_name: post.author?.full_name || 'Anonymous' }
         }));
         setBlogPosts(formattedData);
       }
@@ -71,10 +77,10 @@ const Blog: React.FC = () => {
     });
   };
 
-  if (loading) return <div className="text-center py-20">Loading posts...</div>;
+  if (loading) return <Spinner />;
   if (error) return <div className="text-center py-20 text-red-500">Error: {error}</div>;
 
-  const filteredPosts = blogPosts; // Filtering is now done in the query
+  const filteredPosts = blogPosts;
 
   return (
     <div className="min-h-screen">
@@ -91,6 +97,22 @@ const Blog: React.FC = () => {
             <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto">
               Insights, tutorials, and updates from the world of technology and digital innovation.
             </p>
+            {profile?.role === 'admin' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mt-8"
+              >
+                <Link
+                  to="/admin/create-post"
+                  className="inline-flex items-center bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+                >
+                  <PlusCircle className="h-5 w-5 mr-2" />
+                  Add New Post
+                </Link>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
@@ -103,13 +125,13 @@ const Blog: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="flex flex-wrap justify-center gap-4"
+            className="flex flex-wrap justify-center gap-2 md:gap-4"
           >
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-2 rounded-full font-medium transition-colors ${
+                className={`px-4 py-2 md:px-6 rounded-full font-medium transition-colors text-sm md:text-base ${
                   selectedCategory === category
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600'
@@ -150,12 +172,12 @@ const Blog: React.FC = () => {
                       {filteredPosts[0].category}
                     </span>
                   </div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
                     {filteredPosts[0].title}
                   </h2>
                   <p className="text-gray-600 mb-6">{filteredPosts[0].excerpt}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 mb-4 sm:mb-0">
                       <div className="flex items-center">
                         <User className="h-4 w-4 mr-1" />
                         {filteredPosts[0].author.full_name}

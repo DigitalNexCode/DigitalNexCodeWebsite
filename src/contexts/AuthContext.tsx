@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
@@ -8,6 +8,7 @@ interface AuthContextType {
   profile: any | null;
   loading: boolean;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,33 +19,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = useCallback(async (user: User) => {
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (profileError) {
+      console.error('Error fetching profile:', profileError.message);
+      return null;
+    }
+    return userProfile;
+  }, []);
+
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(userProfile);
+    const getSessionAndProfile = async () => {
+      setLoading(true);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Error getting session:', sessionError.message);
+      } else {
+        setSession(session);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+          const userProfile = await fetchProfile(currentUser);
+          setProfile(userProfile);
+        } else {
+          setProfile(null);
+        }
       }
       setLoading(false);
     };
-
-    getSession();
+    
+    getSessionAndProfile();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setLoading(true);
       setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        const userProfile = await fetchProfile(currentUser);
         setProfile(userProfile);
       } else {
         setProfile(null);
@@ -55,22 +72,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const logout = async () => {
     await supabase.auth.signOut();
   };
+
+  const refreshProfile = useCallback(async () => {
+    if (user) {
+      setLoading(true);
+      const updatedProfile = await fetchProfile(user);
+      setProfile(updatedProfile);
+      setLoading(false);
+    }
+  }, [user, fetchProfile]);
 
   const value = {
     session,
     user,
     profile,
     loading,
-    logout
+    logout,
+    refreshProfile
   };
 
-  // FIX: Render children immediately. The loading state will be handled by individual
-  // components like ProtectedRoute, preventing a white screen on initial load.
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Send, Clock, MessageSquare } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -23,13 +24,25 @@ const Contact: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitMessage('');
 
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitMessage('Thank you for your message! We\'ll get back to you within 24 hours.');
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 2000);
+    try {
+        const { error } = await supabase.functions.invoke('send-email', {
+            body: {
+                type: 'contact',
+                ...formData,
+            },
+        });
+
+        if (error) throw error;
+
+        setSubmitMessage('Thank you for your message! We\'ll get back to you within 24 hours.');
+        setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (error: any) {
+        setSubmitMessage(`Failed to send message: ${error.message || 'Please try again later.'}`);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -161,7 +174,7 @@ const Contact: React.FC = () => {
                       placeholder="Tell us about your project..."
                     ></textarea>
                   </div>
-
+                  
                   <motion.button
                     type="submit"
                     disabled={isSubmitting}

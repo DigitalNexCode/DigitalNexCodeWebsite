@@ -18,30 +18,37 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ConsultationModal from './components/ConsultationModal';
+import ProfilePage from './pages/ProfilePage';
+import InvoiceGenerator from './pages/InvoiceGenerator';
 
 function App() {
   const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
 
+  const handleBookConsultation = () => setIsConsultationModalOpen(true);
+  const handleCloseModal = () => setIsConsultationModalOpen(false);
+
   return (
     <Router>
       <div className="min-h-screen bg-white">
-        <Navbar onBookConsultation={() => setIsConsultationModalOpen(true)} />
+        <Navbar onBookConsultation={handleBookConsultation} />
         <main>
           <Routes>
-            <Route path="/" element={<Home onBookConsultation={() => setIsConsultationModalOpen(true)} />} />
+            <Route path="/" element={<Home onBookConsultation={handleBookConsultation} />} />
             <Route path="/about" element={<About />} />
             <Route path="/services" element={<Services />} />
-            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/pricing" element={<Pricing onBookConsultation={handleBookConsultation} />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:id" element={<BlogPostPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/invoice-generator" element={<InvoiceGenerator />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
             <Route element={<ProtectedRoute adminOnly={true} />}>
               <Route path="/admin" element={<AdminDashboardPage />} />
@@ -51,7 +58,7 @@ function App() {
           </Routes>
         </main>
         <Footer />
-        <ConsultationModal isOpen={isConsultationModalOpen} onClose={() => setIsConsultationModalOpen(false)} />
+        <ConsultationModal isOpen={isConsultationModalOpen} onClose={handleCloseModal} />
       </div>
     </Router>
   );

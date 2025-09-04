@@ -3,11 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import { Calendar, User, Clock, Tag, ArrowLeft } from 'lucide-react';
+import { calculateReadTime } from '../utils/readTime';
 
 interface Post {
     id: number;
     title: string;
-    content: string;
+    content: string | null;
     created_at: string;
     category: string | null;
     image_url: string | null;
@@ -76,6 +77,8 @@ const BlogPostPage: React.FC = () => {
         });
     };
 
+    const readTime = calculateReadTime(post.content);
+
     return (
         <div className="min-h-screen bg-gray-50">
             <motion.div
@@ -99,7 +102,7 @@ const BlogPostPage: React.FC = () => {
                             </div>
                             <div className="flex items-center">
                                 <Clock className="h-4 w-4 mr-2" />
-                                <span>5 min read</span>
+                                <span>{readTime}</span>
                             </div>
                         </div>
                     </div>

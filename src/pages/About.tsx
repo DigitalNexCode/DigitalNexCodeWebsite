@@ -136,22 +136,20 @@ const About: React.FC = () => {
           </motion.div>
 
           <div className="relative">
-            <div className="absolute left-1/2 transform -translate-x-px h-full w-0.5 bg-blue-600"></div>
+            <div className="absolute left-4 md:left-1/2 transform md:-translate-x-px h-full w-0.5 bg-blue-600"></div>
             <div className="space-y-12">
               {milestones.map((milestone, index) => (
                 <motion.div
                   key={milestone.year}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+                  initial={{ opacity: 0, x: -50 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
-                  className={`relative flex items-center ${
-                    index % 2 === 0 ? 'justify-start' : 'justify-end'
-                  }`}
+                  className="relative flex items-center md:justify-start"
                 >
-                  <div className={`w-1/2 ${index % 2 === 0 ? 'pr-8' : 'pl-8'}`}>
+                  <div className="md:w-1/2 md:pr-8 pl-12 md:pl-0 md:text-right">
                     <div className="bg-white p-6 rounded-xl shadow-lg">
-                      <div className="flex items-center space-x-4 mb-2">
+                      <div className="flex items-center md:justify-end space-x-4 mb-2">
                         <Clock className="h-5 w-5 text-blue-600" />
                         <span className="text-2xl font-bold text-blue-600">{milestone.year}</span>
                       </div>
@@ -159,7 +157,7 @@ const About: React.FC = () => {
                       <p className="text-gray-600">{milestone.description}</p>
                     </div>
                   </div>
-                  <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-blue-600 rounded-full border-4 border-white shadow-lg"></div>
+                  <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 w-4 h-4 bg-blue-600 rounded-full border-4 border-white shadow-lg"></div>
                 </motion.div>
               ))}
             </div>
@@ -175,23 +173,23 @@ const About: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center"
+            className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
           >
             <div>
               <div className="text-4xl font-bold mb-2">50+</div>
-              <div className="text-blue-100">Projects Completed</div>
+              <div className="text-blue-100">Projects</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">25+</div>
-              <div className="text-blue-100">Happy Clients</div>
+              <div className="text-blue-100">Clients</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">5+</div>
-              <div className="text-blue-100">Years Experience</div>
+              <div className="text-blue-100">Years</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">100%</div>
-              <div className="text-blue-100">Client Satisfaction</div>
+              <div className="text-blue-100">Satisfaction</div>
             </div>
           </motion.div>
         </div>

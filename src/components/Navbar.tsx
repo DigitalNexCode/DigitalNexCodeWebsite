@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ChevronDown, UserCircle, LogOut, Edit, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ChevronDown, UserCircle, LogOut, Edit, LayoutDashboard, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -55,6 +55,7 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
   ];
 
   const userLinks = [
+    { name: 'Profile', path: '/profile', icon: User },
     ...(profile?.role === 'admin' ? [{ name: 'Admin Dashboard', path: '/admin', icon: LayoutDashboard }] : []),
     ...(profile?.role === 'admin' ? [{ name: 'Create Post', path: '/admin/create-post', icon: Edit }] : []),
   ];
@@ -76,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <img src="https://user-images.githubusercontent.com/1735999/280595337-b44458d2-4361-4c1d-93d3-138332145719.png" alt="DigitalNexCode Logo" className="h-10" />
+            <img src="https://storage.googleapis.com/dualite-testing-424108.appspot.com/images%2F1756977508499-logo.png_1756977511059.png" alt="DigitalNexCode Logo" className="h-10" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -110,6 +111,7 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
             </div>
 
             <NavLink to="/pricing">Pricing</NavLink>
+            <NavLink to="/invoice-generator">Invoice Generator</NavLink>
             <NavLink to="/contact">Contact</NavLink>
           </div>
 
@@ -190,10 +192,12 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
                 <NavLink key={link.path} to={link.path}>{link.name}</NavLink>
               ))}
               <NavLink to="/pricing">Pricing</NavLink>
+              <NavLink to="/invoice-generator">Invoice Generator</NavLink>
               <NavLink to="/contact">Contact</NavLink>
               <div className="border-t my-2"></div>
               {user ? (
                 <>
+                  <NavLink to="/profile">Profile</NavLink>
                   {profile?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
                   <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50">Logout</button>
                 </>

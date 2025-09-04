@@ -2,40 +2,70 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import { Link } from 'react-router-dom';
-import { Edit, Trash2, PlusCircle, ExternalLink } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, ExternalLink, Users, FileText, DollarSign } from 'lucide-react';
 import { BlogPost } from '../Blog'; // Re-using the interface
+import Spinner from '../../components/Spinner';
+
+interface Stats {
+    postCount: number;
+    userCount: number;
+    totalRevenue: number;
+}
 
 const AdminDashboardPage: React.FC = () => {
     const [posts, setPosts] = useState<BlogPost[]>([]);
+    const [stats, setStats] = useState<Stats>({ postCount: 0, userCount: 0, totalRevenue: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchPosts = async () => {
-        const { data, error } = await supabase
-            .from('posts')
-            .select(`
-                id,
-                title,
-                created_at,
-                category,
-                author:profiles ( full_name )
-            `)
-            .order('created_at', { ascending: false });
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const [postsData, postCountData, userCountData, paymentsData] = await Promise.all([
+                supabase
+                    .from('posts')
+                    .select(`id, title, created_at, category, author:profiles ( full_name )`)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('posts')
+                    .select('*', { count: 'exact', head: true }),
+                supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true }),
+                supabase
+                    .from('payments')
+                    .select('amount_in_cents')
+            ]);
 
-        if (error) {
-            setError(error.message);
-        } else if (data) {
-            const formattedData = data.map((post: any) => ({
+            if (postsData.error) throw postsData.error;
+            if (postCountData.error) throw postCountData.error;
+            if (userCountData.error) throw userCountData.error;
+            if (paymentsData.error) throw paymentsData.error;
+            
+            const formattedPosts = postsData.data.map((post: any) => ({
                 ...post,
-                author: post.author || { full_name: 'Anonymous' }
+                author: { full_name: post.author?.full_name || 'Anonymous' }
             }));
-            setPosts(formattedData);
+            setPosts(formattedPosts);
+
+            const totalRevenue = (paymentsData.data || []).reduce((sum, payment) => sum + payment.amount_in_cents, 0);
+
+            setStats({
+                postCount: postCountData.count || 0,
+                userCount: userCountData.count || 0,
+                totalRevenue: totalRevenue / 100,
+            });
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {
-        fetchPosts();
+        fetchData();
     }, []);
 
     const handleDelete = async (postId: number) => {
@@ -49,7 +79,7 @@ const AdminDashboardPage: React.FC = () => {
                 alert('Failed to delete post: ' + error.message);
             } else {
                 alert('Post deleted successfully.');
-                fetchPosts(); // Refresh the list
+                fetchData(); // Refresh all data
             }
         }
     };
@@ -58,7 +88,22 @@ const AdminDashboardPage: React.FC = () => {
         return new Date(dateString).toLocaleDateString('en-ZA');
     };
 
-    if (loading) return <div className="text-center py-20">Loading dashboard...</div>;
+    const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string, color: string }> = ({ icon: Icon, title, value, color }) => (
+        <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4"
+        >
+            <div className={`p-3 rounded-full ${color}`}>
+                <Icon className="h-6 w-6 text-white" />
+            </div>
+            <div>
+                <p className="text-sm text-gray-500">{title}</p>
+                <p className="text-2xl font-bold text-gray-900">{value}</p>
+            </div>
+        </motion.div>
+    );
+
+    if (loading) return <Spinner />;
     if (error) return <div className="text-center py-20 text-red-500">Error: {error}</div>;
 
     return (
@@ -68,12 +113,19 @@ const AdminDashboardPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="max-w-7xl mx-auto"
             >
-                <div className="flex justify-between items-center mb-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-                    <Link to="/admin/create-post" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center">
+                    <Link to="/admin/create-post" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center self-start sm:self-center">
                         <PlusCircle className="h-5 w-5 mr-2" />
                         Create New Post
                     </Link>
+                </div>
+
+                {/* Stats Section */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <StatCard icon={FileText} title="Total Posts" value={stats.postCount.toString()} color="bg-blue-500" />
+                    <StatCard icon={Users} title="Total Users" value={stats.userCount.toString()} color="bg-green-500" />
+                    <StatCard icon={DollarSign} title="Total Revenue" value={`R ${stats.totalRevenue.toFixed(2)}`} color="bg-yellow-500" />
                 </div>
 
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -82,9 +134,9 @@ const AdminDashboardPage: React.FC = () => {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Category</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Author</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Date</th>
                                     <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
@@ -94,13 +146,13 @@ const AdminDashboardPage: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{post.title}</div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                 {post.category}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{post.author.full_name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(post.created_at)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">{post.author.full_name}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">{formatDate(post.created_at)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                             <Link to={`/blog/${post.id}`} target="_blank" className="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
                                                 <ExternalLink size={16} className="mr-1" /> View

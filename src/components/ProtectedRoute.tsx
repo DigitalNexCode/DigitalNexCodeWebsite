@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Spinner from './Spinner';
 
 interface ProtectedRouteProps {
   adminOnly?: boolean;
@@ -10,7 +11,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ adminOnly = false }) =>
   const { user, profile, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>; // Or a spinner component
+    return <Spinner />;
   }
 
   if (!user) {

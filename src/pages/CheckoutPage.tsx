@@ -15,7 +15,7 @@ declare global {
 const CheckoutPage: React.FC = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth(); // Get user and profile
   const { planName, price, billingType, paymentPlan } = state || {};
   const [isYocoReady, setIsYocoReady] = useState(false);
 
@@ -65,11 +65,20 @@ const CheckoutPage: React.FC = () => {
       publicKey: yocoPublicKey,
     });
 
+    const nameParts = profile?.full_name?.split(' ') || [];
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
     yoco.showPopup({
       amountInCents,
       currency: 'ZAR',
       name: `DigitalNexCode - ${planName}`,
       description: `Payment for ${planName} plan.`,
+      customer: {
+        firstName,
+        lastName,
+        email: user?.email,
+      },
       callback: async function (result: any) {
         if (result.error) {
           alert("Payment failed: " + result.error.message);

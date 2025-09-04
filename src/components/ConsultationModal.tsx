@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Video, MessageCircle, Calendar, ArrowRight, ArrowLeft, Send, X } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 interface ConsultationModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
     projectDescription: '',
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -38,37 +41,36 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
   const nextStep = () => setCurrentStep(prev => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setCurrentStep(prev => (prev > 1 ? prev - 1 : prev));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const recipient = 'osetshedi1900@gmail.com';
-    const subject = `New Consultation Booking from ${formData.name}`;
-    const body = `
-      A new consultation has been booked with the following details:
+    setIsSubmitting(true);
+    setSubmitMessage('');
 
-      Personal Details:
-      - Name: ${formData.name}
-      - Email: ${formData.email}
-      - Phone: ${formData.phone}
+    try {
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'consultation',
+          ...formData,
+        },
+      });
 
-      Consultation Details:
-      - Type: ${formData.consultationType}
-      - Preferred Date: ${formData.preferredDate}
-      - Preferred Time: ${formData.preferredTime}
+      if (error) throw error;
 
-      Project Overview:
-      ${formData.projectDescription}
-    `;
-    
-    window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setIsSubmitted(true);
-    setTimeout(() => {
+      setIsSubmitted(true);
+      setTimeout(() => {
         handleClose();
-    }, 3000);
+      }, 3000);
+    } catch (error: any) {
+      setSubmitMessage(`Failed to send request: ${error.message || 'Please try again later.'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setCurrentStep(1);
     setIsSubmitted(false);
+    setSubmitMessage('');
     setFormData({
         name: '', email: '', phone: '', consultationType: 'Video Call',
         preferredDate: '', preferredTime: '', projectDescription: '',
@@ -201,7 +203,7 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
                 <Send className="h-16 w-16 text-green-500 mx-auto mb-4" />
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
-                <p className="text-gray-600">Your consultation request has been prepared. Please check your email client to send it. We look forward to speaking with you!</p>
+                <p className="text-gray-600">Your consultation request has been sent successfully. We'll be in touch soon!</p>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit}>
@@ -231,6 +233,12 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
                 {renderStep()}
               </AnimatePresence>
 
+              {submitMessage && (
+                  <div className="bg-red-100 border border-red-200 text-red-800 px-4 py-3 rounded-lg my-4 text-center">
+                    {submitMessage}
+                  </div>
+                )}
+
               <div className="mt-8 flex justify-between">
                   {currentStep > 1 && (
                       <motion.button type="button" onClick={prevStep} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-semibold flex items-center">
@@ -245,8 +253,8 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
                           <ArrowRight className="h-5 w-5 ml-2" />
                       </motion.button>
                   ) : (
-                      <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold flex items-center">
-                          Submit & Send Email
+                      <motion.button type="submit" disabled={isSubmitting} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold flex items-center disabled:opacity-50">
+                          {isSubmitting ? 'Submitting...' : 'Submit Request'}
                           <Send className="h-5 w-5 ml-2" />
                       </motion.button>
                   )}

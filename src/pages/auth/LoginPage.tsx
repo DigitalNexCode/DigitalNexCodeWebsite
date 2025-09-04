@@ -22,7 +22,11 @@ const LoginPage: React.FC = () => {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message.includes('Email not confirmed')) {
+        setError('Please verify your email address before logging in. Check your inbox for a verification link.');
+      } else {
+        setError(error.message);
+      }
     } else {
       navigate('/');
     }

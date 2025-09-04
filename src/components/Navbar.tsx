@@ -112,6 +112,7 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
 
             <NavLink to="/pricing">Pricing</NavLink>
             <NavLink to="/invoice-generator">Invoice Generator</NavLink>
+            <NavLink to="/resume-builder">Resume Builder</NavLink>
             <NavLink to="/contact">Contact</NavLink>
           </div>
 
@@ -193,6 +194,7 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
               ))}
               <NavLink to="/pricing">Pricing</NavLink>
               <NavLink to="/invoice-generator">Invoice Generator</NavLink>
+              <NavLink to="/resume-builder">Resume Builder</NavLink>
               <NavLink to="/contact">Contact</NavLink>
               <div className="border-t my-2"></div>
               {user ? (

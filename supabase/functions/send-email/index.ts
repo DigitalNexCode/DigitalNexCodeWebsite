@@ -2,11 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { corsHeaders } from '../cors.ts'
 import { Resend } from 'https://esm.sh/resend@3.2.0'
 
-// These secrets are stored in your Supabase project settings
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const ADMIN_EMAIL = 'osetshedi1900@gmail.com'
-
-const resend = new Resend(RESEND_API_KEY)
 
 // --- Email Templates ---
 const adminNotificationTemplate = (type: string, data: any) => {
@@ -72,14 +68,22 @@ serve(async (req) => {
   }
 
   try {
+    // Check for Resend API Key first to prevent timeouts
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    if (!RESEND_API_KEY) {
+      throw new Error('Server configuration error: RESEND_API_KEY is not set.')
+    }
+    
+    const resend = new Resend(RESEND_API_KEY)
     const { type, ...formData } = await req.json()
 
     // 1. Prepare emails
     const adminEmail = adminNotificationTemplate(type, formData)
     const clientEmail = clientConfirmationTemplate(type, formData)
     
-    // Using the verified domain for the 'from' address
-    const fromAddress = 'DigitalNexCode <noreply@digitalnexcode.co.za>'
+    // Using Resend's default "from" address for better deliverability on free plans.
+    // Replace with your own verified domain (e.g., 'info@digitalnexcode.co.za') once configured in Resend.
+    const fromAddress = 'DigitalNexCode <onboarding@resend.dev>'
 
     // 2. Send both emails concurrently
     const [adminResult, clientResult] = await Promise.allSettled([
@@ -100,8 +104,6 @@ serve(async (req) => {
 
     if (adminResult.status === 'rejected') {
         console.error('Failed to send admin email:', adminResult.reason)
-        // Even if admin email fails, we don't want to show an error to the user if their confirmation succeeded.
-        // The primary failure point would be sending to the admin.
         throw new Error(`Failed to send notification to administrator. Reason: ${adminResult.reason.message}`)
     }
      if (clientResult.status === 'rejected') {

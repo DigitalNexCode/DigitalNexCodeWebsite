@@ -12,7 +12,7 @@ const Contact: React.FC = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -24,7 +24,10 @@ const Contact: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setSubmitMessage('');
+    setSubmitStatus(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
 
     try {
         const { error } = await supabase.functions.invoke('send-email', {
@@ -32,14 +35,22 @@ const Contact: React.FC = () => {
                 type: 'contact',
                 ...formData,
             },
+            signal: controller.signal,
         });
 
-        if (error) throw error;
+        clearTimeout(timeoutId);
 
-        setSubmitMessage('Thank you for your message! We\'ll get back to you within 24 hours.');
+        if (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('The server is not responding. Please try again later or contact us directly.');
+            }
+            throw error;
+        }
+
+        setSubmitStatus({ type: 'success', message: 'Thank you for your message! We\'ll get back to you within 24 hours.' });
         setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error: any) {
-        setSubmitMessage(`Failed to send message: ${error.message || 'Please try again later.'}`);
+        setSubmitStatus({ type: 'error', message: `Failed to send message: ${error.message || 'Please try again later.'}` });
     } finally {
         setIsSubmitting(false);
     }
@@ -103,9 +114,9 @@ const Contact: React.FC = () => {
                   <h2 className="text-3xl font-bold text-gray-900">Send us a Message</h2>
                 </div>
 
-                {submitMessage && (
-                  <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
-                    {submitMessage}
+                {submitStatus && (
+                  <div className={`px-4 py-3 rounded-lg mb-6 ${submitStatus.type === 'success' ? 'bg-green-100 border border-green-200 text-green-800' : 'bg-red-100 border border-red-200 text-red-800'}`}>
+                    {submitStatus.message}
                   </div>
                 )}
 
@@ -267,12 +278,25 @@ const Contact: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="bg-white rounded-xl shadow-lg overflow-hidden"
           >
-            <div className="h-96 bg-gray-200 flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Interactive map would be embedded here</p>
-                <p className="text-sm text-gray-500 mt-2">Pretoria, Gauteng, South Africa</p>
-              </div>
+            <iframe
+              className="w-full h-96 border-0"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src="https://www.openstreetmap.org/export/embed.html?bbox=28.037444651126865%2C-25.504188642981507%2C28.040955662727356%2C-25.50252309491418&layer=mapnik"
+              title="DigitalNexCode Location"
+            ></iframe>
+            <div className="text-center py-2 bg-gray-100">
+              <small>
+                <a 
+                  href="https://www.openstreetmap.org/?#map=19/-25.503356/28.039200"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm"
+                >
+                  View Larger Map
+                </a>
+              </small>
             </div>
           </motion.div>
         </div>

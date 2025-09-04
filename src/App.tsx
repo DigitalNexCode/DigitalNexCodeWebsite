@@ -20,6 +20,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ConsultationModal from './components/ConsultationModal';
 import ProfilePage from './pages/ProfilePage';
 import InvoiceGenerator from './pages/InvoiceGenerator';
+import ResumeBuilderPage from './pages/resume-builder/ResumeBuilderPage';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
@@ -29,7 +31,8 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-white">
+      <Toaster position="top-center" reverseOrder={false} />
+      <div className="min-h-screen bg-white overflow-x-hidden">
         <Navbar onBookConsultation={handleBookConsultation} />
         <main>
           <Routes>
@@ -44,6 +47,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/invoice-generator" element={<InvoiceGenerator />} />
+            <Route path="/resume-builder" element={<ResumeBuilderPage />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>

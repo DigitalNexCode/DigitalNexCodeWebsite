@@ -46,15 +46,26 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
     setIsSubmitting(true);
     setSubmitMessage('');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+
     try {
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           type: 'consultation',
           ...formData,
         },
+        signal: controller.signal,
       });
 
-      if (error) throw error;
+      clearTimeout(timeoutId);
+
+      if (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('The server is not responding. Please try again later or contact us directly.');
+        }
+        throw error;
+      }
 
       setIsSubmitted(true);
       setTimeout(() => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Code, Palette, Shield, Users, CheckCircle, Star } from 'lucide-react';
+import { ArrowRight, Code, Palette, Shield, Users, CheckCircle, Star, FileText, Receipt } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface HomeProps {
@@ -38,6 +38,21 @@ const Home: React.FC<HomeProps> = ({ onBookConsultation }) => {
     'Security Best Practices',
     'Performance Optimization',
     'Ongoing Support & Maintenance'
+  ];
+
+  const tools = [
+    {
+      icon: FileText,
+      title: 'AI Resume Builder',
+      description: 'Craft the perfect, job-winning CV with AI-driven optimization and professional templates.',
+      link: '/resume-builder'
+    },
+    {
+      icon: Receipt,
+      title: 'Free Invoice Generator',
+      description: 'Create and download professional invoices in seconds. No sign-up required.',
+      link: '/invoice-generator'
+    }
   ];
 
   return (
@@ -78,8 +93,48 @@ const Home: React.FC<HomeProps> = ({ onBookConsultation }) => {
         </div>
       </section>
 
-      {/* Services Carousel */}
+      {/* Featured Tools Section */}
       <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Empower Your Career & Business
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Explore our free tools designed to help you succeed.
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {tools.map((tool, index) => (
+              <motion.div
+                key={tool.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+              >
+                <Link to={tool.link} className="block bg-white p-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-full">
+                  <tool.icon className="h-12 w-12 text-blue-600 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{tool.title}</h3>
+                  <p className="text-gray-600 mb-4">{tool.description}</p>
+                  <span className="font-semibold text-blue-600 flex items-center">
+                    Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                  </span>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Services Carousel */}
+      <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -117,7 +172,7 @@ const Home: React.FC<HomeProps> = ({ onBookConsultation }) => {
       </section>
 
       {/* Features Section */}
-      <section className="py-16">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div

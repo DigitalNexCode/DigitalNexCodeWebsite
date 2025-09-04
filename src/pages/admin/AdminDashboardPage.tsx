@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import { Link } from 'react-router-dom';
-import { Edit, Trash2, PlusCircle, ExternalLink, Users, FileText, DollarSign } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, ExternalLink, Users, FileText, DollarSign, RefreshCw } from 'lucide-react';
 import { BlogPost } from '../Blog'; // Re-using the interface
 import Spinner from '../../components/Spinner';
 
@@ -16,10 +16,10 @@ const AdminDashboardPage: React.FC = () => {
     const [posts, setPosts] = useState<BlogPost[]>([]);
     const [stats, setStats] = useState<Stats>({ postCount: 0, userCount: 0, totalRevenue: 0 });
     const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = useCallback(async () => {
         setError(null);
         try {
             const [postsData, postCountData, userCountData, paymentsData] = await Promise.all([
@@ -59,14 +59,19 @@ const AdminDashboardPage: React.FC = () => {
 
         } catch (err: any) {
             setError(err.message);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        setLoading(true);
+        fetchData().finally(() => setLoading(false));
+    }, [fetchData]);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchData();
+        setIsRefreshing(false);
+    };
 
     const handleDelete = async (postId: number) => {
         if (window.confirm('Are you sure you want to delete this post?')) {
@@ -115,10 +120,16 @@ const AdminDashboardPage: React.FC = () => {
             >
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-                    <Link to="/admin/create-post" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center self-start sm:self-center">
-                        <PlusCircle className="h-5 w-5 mr-2" />
-                        Create New Post
-                    </Link>
+                    <div className="flex items-center gap-2 self-start sm:self-center">
+                        <button onClick={handleRefresh} disabled={isRefreshing} className="bg-white text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 border border-gray-300 transition-colors flex items-center disabled:opacity-50">
+                            <RefreshCw className={`h-5 w-5 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </button>
+                        <Link to="/admin/create-post" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center">
+                            <PlusCircle className="h-5 w-5 mr-2" />
+                            Create Post
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Stats Section */}

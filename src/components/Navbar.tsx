@@ -77,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <img src="https://storage.googleapis.com/dualite-testing-424108.appspot.com/images%2F1756977508499-logo.png_1756977511059.png" alt="DigitalNexCode Logo" className="h-10" />
+            <img src="/logo.png" alt="DigitalNexCode Logo" className="h-10" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -136,12 +136,15 @@ const Navbar: React.FC<NavbarProps> = ({ onBookConsultation }) => {
                         <p className="text-xs text-gray-500">{profile?.role === 'admin' ? 'Administrator' : 'Member'}</p>
                       </div>
                       <div className="py-1">
-                        {userLinks.map(link => (
+                        {userLinks.map(link => {
+                          const Icon = link.icon;
+                          return (
                            <Link key={link.path} to={link.path} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                             <link.icon className="h-4 w-4 mr-3 text-gray-500" />
+                             <Icon className="h-4 w-4 mr-3 text-gray-500" />
                              {link.name}
                            </Link>
-                        ))}
+                          );
+                        })}
                       </div>
                       <div className="py-1 border-t">
                         <button onClick={handleLogout} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100">

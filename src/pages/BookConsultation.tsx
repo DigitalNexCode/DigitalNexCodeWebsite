@@ -9,21 +9,32 @@ const steps = [
   { id: 4, name: 'Confirmation' },
 ];
 
+const initialFormData = {
+  name: '',
+  email: '',
+  phone: '',
+  consultationType: 'Video Call',
+  preferredDate: '',
+  preferredTime: '',
+  projectDescription: '',
+  _cc: '', // Used by Formspree to send a copy to the user
+};
+
 const BookConsultation: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    consultationType: 'Video Call',
-    preferredDate: '',
-    preferredTime: '',
-    projectDescription: '',
-  });
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formData, setFormData] = useState(initialFormData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const updatedFormData = { ...formData, [name]: value };
+
+    if (name === 'email') {
+      updatedFormData._cc = value;
+    }
+
+    setFormData(updatedFormData);
   };
   
   const handleRadioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,32 +44,49 @@ const BookConsultation: React.FC = () => {
   const nextStep = () => setCurrentStep(prev => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setCurrentStep(prev => (prev > 1 ? prev - 1 : prev));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const recipient = 'osetshedi1900@gmail.com';
-    const subject = `New Consultation Booking from ${formData.name}`;
-    const body = `
-      A new consultation has been booked with the following details:
+    if (currentStep !== steps.length) return;
 
-      Personal Details:
-      - Name: ${formData.name}
-      - Email: ${formData.email}
-      - Phone: ${formData.phone}
+    setIsSubmitting(true);
+    setSubmitStatus(null);
 
-      Consultation Details:
-      - Type: ${formData.consultationType}
-      - Preferred Date: ${formData.preferredDate}
-      - Preferred Time: ${formData.preferredTime}
+    const finalFormData = {
+        ...formData,
+        _subject: `New Consultation Request from ${formData.name}`,
+    };
 
-      Project Overview:
-      ${formData.projectDescription}
-    `;
-    
-    window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setIsSubmitted(true);
+    try {
+      const response = await fetch('https://formspree.io/f/mzboybnl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(finalFormData),
+      });
+
+      if (response.ok) {
+        setSubmitStatus({ type: 'success', message: 'Thank you! Your request has been sent. A confirmation copy has been sent to your email.' });
+        setFormData(initialFormData);
+        // Do not reset step here, so the success message is shown.
+      } else {
+        const data = await response.json();
+        if (data.errors) {
+            throw new Error(data.errors.map((error: any) => error.message).join(", "));
+        } else {
+            throw new Error('Oops! There was a problem submitting your form.');
+        }
+      }
+    } catch (error: any) {
+      setSubmitStatus({ type: 'error', message: `Failed to send message: ${error.message || 'Please try again later.'}` });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const renderStep = () => {
+    // The rest of the component remains the same...
     switch (currentStep) {
       case 1:
         return (
@@ -169,11 +197,11 @@ const BookConsultation: React.FC = () => {
       <section className="py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12">
-                {isSubmitted ? (
+                {submitStatus ? (
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-                        <Send className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
-                        <p className="text-gray-600">Your consultation request has been prepared. Please check your email client to send it. We look forward to speaking with you!</p>
+                        <Send className={`h-16 w-16 mx-auto mb-4 ${submitStatus.type === 'success' ? 'text-green-500' : 'text-red-500'}`} />
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{submitStatus.type === 'success' ? 'Thank You!' : 'Submission Failed'}</h2>
+                        <p className="text-gray-600">{submitStatus.message}</p>
                     </motion.div>
                 ) : (
                     <form onSubmit={handleSubmit}>
@@ -205,7 +233,7 @@ const BookConsultation: React.FC = () => {
                         </AnimatePresence>
 
                         <div className="mt-8 flex justify-between">
-                            {currentStep > 1 && (
+                            {currentStep > 1 && !submitStatus && (
                                 <motion.button type="button" onClick={prevStep} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-semibold flex items-center">
                                     <ArrowLeft className="h-5 w-5 mr-2" />
                                     Back
@@ -218,9 +246,9 @@ const BookConsultation: React.FC = () => {
                                     <ArrowRight className="h-5 w-5 ml-2" />
                                 </motion.button>
                             ) : (
-                                <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold flex items-center">
-                                    Submit & Send Email
-                                    <Send className="h-5 w-5 ml-2" />
+                                <motion.button type="submit" disabled={isSubmitting} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold flex items-center disabled:opacity-50">
+                                    {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                                    {!isSubmitting && <Send className="h-5 w-5 ml-2" />}
                                 </motion.button>
                             )}
                         </div>

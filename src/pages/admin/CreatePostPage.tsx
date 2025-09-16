@@ -13,9 +13,15 @@ const CreatePostPage: React.FC = () => {
     const [excerpt, setExcerpt] = useState('');
     const [category, setCategory] = useState('');
     const [tags, setTags] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setImageFile(e.target.files[0]);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,6 +31,22 @@ const CreatePostPage: React.FC = () => {
         }
         setLoading(true);
         setError(null);
+
+        let imageUrl = '';
+        if (imageFile) {
+            const fileName = `${user.id}/${Date.now()}_${imageFile.name}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('post-images')
+                .upload(fileName, imageFile);
+
+            if (uploadError) {
+                setError(uploadError.message);
+                setLoading(false);
+                return;
+            }
+            const { data: publicUrlData } = supabase.storage.from('post-images').getPublicUrl(fileName);
+            imageUrl = publicUrlData.publicUrl;
+        }
 
         const tagsArray = tags.split(',').map(tag => tag.trim());
 
@@ -96,10 +118,19 @@ const CreatePostPage: React.FC = () => {
                     </div>
 
                     <div>
-                        <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                         <div className="relative">
-                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                            <input type="url" id="imageUrl" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                        <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Post Image</label>
+                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                            <div className="space-y-1 text-center">
+                                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                <div className="flex text-sm text-gray-600">
+                                    <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                        <span>Upload a file</span>
+                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} />
+                                    </label>
+                                    <p className="pl-1">or drag and drop</p>
+                                </div>
+                                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                            </div>
                         </div>
                     </div>
 

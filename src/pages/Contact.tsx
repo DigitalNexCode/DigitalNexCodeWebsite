@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Send, Clock, MessageSquare } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -26,33 +25,32 @@ const Contact: React.FC = () => {
     setIsSubmitting(true);
     setSubmitStatus(null);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
-
     try {
-        const { error } = await supabase.functions.invoke('send-email', {
-            body: {
-                type: 'contact',
-                ...formData,
-            },
-            signal: controller.signal,
-        });
+      const response = await fetch('https://formspree.io/f/mzboybnl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(formData),
+      });
 
-        clearTimeout(timeoutId);
-
-        if (error) {
-            if (error.name === 'AbortError') {
-                throw new Error('The server is not responding. Please try again later or contact us directly.');
-            }
-            throw error;
-        }
-
-        setSubmitStatus({ type: 'success', message: 'Thank you for your message! We\'ll get back to you within 24 hours.' });
+      if (response.ok) {
+        setSubmitStatus({ type: 'success', message: 'Thank you for your message! We\'ll get back to you shortly.' });
         setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        // Try to parse the error from Formspree for a better message
+        const data = await response.json();
+        if ('errors' in data) {
+            throw new Error(data["errors"].map((error: any) => error["message"]).join(", "));
+        } else {
+            throw new Error('Oops! There was a problem submitting your form.');
+        }
+      }
     } catch (error: any) {
-        setSubmitStatus({ type: 'error', message: `Failed to send message: ${error.message || 'Please try again later.'}` });
+      setSubmitStatus({ type: 'error', message: `Failed to send message: ${error.message || 'Please try again later.'}` });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Video, MessageCircle, Calendar, ArrowRight, ArrowLeft, Send, X } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 
 interface ConsultationModalProps {
   isOpen: boolean;
@@ -15,23 +14,31 @@ const steps = [
   { id: 4, name: 'Confirmation' },
 ];
 
+const initialModalFormData = {
+  name: '',
+  email: '',
+  phone: '',
+  consultationType: 'Video Call',
+  preferredDate: '',
+  preferredTime: '',
+  projectDescription: '',
+  _cc: '', // For Formspree
+};
+
 const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    consultationType: 'Video Call',
-    preferredDate: '',
-    preferredTime: '',
-    projectDescription: '',
-  });
+  const [formData, setFormData] = useState(initialModalFormData);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const updatedFormData = { ...formData, [name]: value };
+    if (name === 'email') {
+      updatedFormData._cc = value;
+    }
+    setFormData(updatedFormData);
   };
   
   const handleRadioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,31 +53,31 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
     setIsSubmitting(true);
     setSubmitMessage('');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+    const finalFormData = {
+        ...formData,
+        _subject: `New Consultation Request from ${formData.name}`,
+    };
 
     try {
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          type: 'consultation',
-          ...formData,
+      const response = await fetch('https://formspree.io/f/mzboybnl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        signal: controller.signal,
+        body: JSON.stringify(finalFormData),
       });
 
-      clearTimeout(timeoutId);
-
-      if (error) {
-        if (error.name === 'AbortError') {
-          throw new Error('The server is not responding. Please try again later or contact us directly.');
-        }
-        throw error;
+      if (response.ok) {
+        setIsSubmitted(true);
+        setTimeout(() => {
+            handleClose();
+        }, 3000);
+      } else {
+        const data = await response.json();
+        const errorMessage = data.errors ? data.errors.map((error: any) => error.message).join(', ') : 'Oops! There was a problem submitting your form.';
+        throw new Error(errorMessage);
       }
-
-      setIsSubmitted(true);
-      setTimeout(() => {
-        handleClose();
-      }, 3000);
     } catch (error: any) {
       setSubmitMessage(`Failed to send request: ${error.message || 'Please try again later.'}`);
     } finally {
@@ -82,10 +89,7 @@ const ConsultationModal: React.FC<ConsultationModalProps> = ({ isOpen, onClose }
     setCurrentStep(1);
     setIsSubmitted(false);
     setSubmitMessage('');
-    setFormData({
-        name: '', email: '', phone: '', consultationType: 'Video Call',
-        preferredDate: '', preferredTime: '', projectDescription: '',
-    });
+    setFormData(initialModalFormData);
     onClose();
   };
 

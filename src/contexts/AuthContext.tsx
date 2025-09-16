@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
@@ -34,36 +35,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-    const getSessionAndProfile = async () => {
-      setLoading(true);
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('Error getting session:', sessionError.message);
-      } else {
-        setSession(session);
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-          const userProfile = await fetchProfile(currentUser);
-          setProfile(userProfile);
-        } else {
-          setProfile(null);
-        }
-      }
-      setLoading(false);
-    };
-    
-    getSessionAndProfile();
-
+    setLoading(true);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true);
-      setSession(session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        const userProfile = await fetchProfile(currentUser);
+      if (session?.user) {
+        const userProfile = await fetchProfile(session.user);
+        setSession(session);
+        setUser(session.user);
         setProfile(userProfile);
       } else {
+        setSession(null);
+        setUser(null);
         setProfile(null);
       }
       setLoading(false);

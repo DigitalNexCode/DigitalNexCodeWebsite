@@ -1,14 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { CVData } from './types';
-import { Plus, Trash2, UploadCloud } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import toast from 'react-hot-toast';
-import * as pdfjs from 'pdfjs-dist/build/pdf';
-import mammoth from 'mammoth';
-
-// Setup worker for pdf.js
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+import { Plus, Trash2 } from 'lucide-react';
 
 interface Step1Props {
     cvData: CVData;
@@ -17,95 +10,6 @@ interface Step1Props {
 }
 
 const Step1_CreateCV: React.FC<Step1Props> = ({ cvData, setCvData, nextStep }) => {
-    const [isParsing, setIsParsing] = useState(false);
-    const [parsingStatus, setParsingStatus] = useState('');
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setIsParsing(true);
-        const toastId = toast.loading('Preparing to read your file...');
-
-        try {
-            setParsingStatus('Reading file content...');
-            toast.loading('Reading file content...', { id: toastId });
-
-            let text = '';
-            if (file.type === 'application/pdf') {
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const typedArray = new Uint8Array(event.target?.result as ArrayBuffer);
-                    const pdf = await pdfjs.getDocument(typedArray).promise;
-                    let fullText = '';
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        fullText += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
-                    }
-                    text = fullText;
-                    await structureCvWithAI(text, toastId);
-                };
-                reader.readAsArrayBuffer(file);
-            } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const result = await mammoth.extractRawText({ arrayBuffer: event.target?.result as ArrayBuffer });
-                    text = result.value;
-                    await structureCvWithAI(text, toastId);
-                };
-                reader.readAsArrayBuffer(file);
-            } else {
-                throw new Error('Unsupported file type. Please upload a PDF or DOCX file.');
-            }
-        } catch (error: any) {
-            toast.error(`Failed to read file: ${error.message}`, { id: toastId });
-            setIsParsing(false);
-            setParsingStatus('');
-        }
-    };
-
-    const structureCvWithAI = async (text: string, toastId: string) => {
-        setParsingStatus('AI is structuring your CV...');
-        toast.loading('AI is structuring your CV...', { id: toastId });
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60-second timeout
-
-        try {
-            const { data, error } = await supabase.functions.invoke('structure-cv', {
-                body: { cvText: text },
-                signal: controller.signal,
-            });
-            
-            clearTimeout(timeoutId);
-            if (error) throw error;
-            
-            const structuredData = data.cv as Partial<CVData>;
-            setCvData(prev => ({
-                ...prev,
-                personalInfo: { ...prev.personalInfo, ...structuredData.personalInfo },
-                summary: structuredData.summary || prev.summary,
-                experience: structuredData.experience || prev.experience,
-                education: structuredData.education || prev.education,
-                skills: structuredData.skills || prev.skills,
-                references: structuredData.references || prev.references,
-                portfolio: structuredData.portfolio || prev.portfolio,
-            }));
-
-            toast.success('Your CV has been auto-filled!', { id: toastId });
-        } catch (error: any) {
-            if (error.name === 'AbortError') {
-                toast.error('The AI analysis timed out. Your CV might be too complex. Please try again or fill the fields manually.', { id: toastId });
-            } else {
-                toast.error(`AI structuring failed: ${error.message}`, { id: toastId });
-            }
-        } finally {
-            setIsParsing(false);
-            setParsingStatus('');
-        }
-    };
-
 
     const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setCvData(prev => ({ ...prev, personalInfo: { ...prev.personalInfo, [e.target.name]: e.target.value } }));
@@ -145,15 +49,6 @@ const Step1_CreateCV: React.FC<Step1Props> = ({ cvData, setCvData, nextStep }) =
     return (
         <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} className="space-y-8">
             
-            <div className="p-6 bg-white rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">Auto-fill from existing CV</h3>
-                <label className={`w-full flex justify-center items-center px-4 py-6 bg-gray-50 text-blue-600 rounded-lg shadow-inner border-2 border-dashed border-gray-300 transition-colors ${isParsing ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-blue-50'}`}>
-                    <UploadCloud size={24} className="mr-3" />
-                    <span className="font-medium">{isParsing ? parsingStatus : 'Upload DOCX or PDF'}</span>
-                    <input type="file" className="hidden" accept=".pdf,.docx" onChange={handleFileUpload} disabled={isParsing} />
-                </label>
-            </div>
-
             <div className="p-6 bg-white rounded-lg shadow">
                 <h3 className="text-xl font-semibold mb-4 text-gray-800">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
